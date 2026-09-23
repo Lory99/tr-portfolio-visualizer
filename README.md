@@ -28,23 +28,14 @@ python3 -m http.server 8000
 ```
 
 1. Drag & drop your exported CSV onto the page.
-2. Explore the **Dashboard** (EN/IT toggle in the header — default follows your browser): main graph (net + gross, two-tone above/below zero — hover anywhere for a crosshair with the value) beside the daily heatmap (capped to 4 months with best/worst/most-traded day footers, ◀ ▶ to page through longer ranges), compact P&L by instrument (net/fees/tax split) next to win-rate stats by asset class and direction (stock/derivative, long/short), monthly P&L bars (your own realized data, no denominators, no estimates), closed trades with win rate, open positions, all operations. Switch to the **Statistics** tab for the graphic best-vs-worst summary duels (day/hour to open/close, all by win rate), the weekday×hour win-rate/activity matrix (Mon–Fri, 06–23 local), separated opened/closed activity charts, wins-vs-losses charts, median holding period and duration buckets with per-bucket win/loss donuts. Range presets 1D/1W/1M/1Y/YTD/All plus a custom from/to date range live in the top bar and drive both tabs; account stats (deposits, cash, open) too. Click any table header to sort.
+2. Explore the **Dashboard**: equity curve, daily heatmap, P&L by instrument / asset class / month, closed trades, open positions.
+3. Switch to **Statistics** for win-rate by day/hour, activity charts, holding periods.
 
 ## How P&L is computed (`app.js`)
 
 - **FIFO matching** per `symbol` (ISIN): each SELL consumes the oldest open BUY lots.
-- **Gross** = qty × (sell price − buy price). **Net** = gross − allocated buy fees − sell fees − sell taxes (buy-lot fees split pro-rata on partial closes).
-- Daily heatmap groups **net** P&L by sell `date`. Deposits/withdrawals/interest are excluded from trading P&L but counted in the cash KPIs.
-- Open positions show remaining quantity × average buy price (not revalued — the export has no market prices).
-
-## Publish to GitHub Pages
-
-```bash
-git add -A && git commit -m "TR portfolio visualizer" && git push
-# GitHub → repo Settings → Pages → Deploy from branch → main, folder /(root)
-```
-
-That's it — the repo is already Pages-ready (`.nojekyll`, relative asset paths). To point the header button at your repo, set the `href` of `#githubLink` in `index.html`.
+- **Gross** = qty × (sell price − buy price). **Net** = gross − allocated buy fees − sell fees − sell taxes.
+- Daily heatmap groups **net** P&L by sell `date`. Open positions are not revalued — the export has no market prices.
 
 ## Files
 
