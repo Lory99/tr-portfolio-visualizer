@@ -1,5 +1,7 @@
 # TR Portfolio Visualizer (Unofficial)
 
+**Live demo: https://lory99.github.io/tr-portfolio-visualizer/**
+
 **Unofficial Trade Republic portfolio visualizer. Not affiliated with, endorsed by, or connected to Trade Republic Bank GmbH in any way.**
 
 Static, privacy-friendly dashboard for **Trade Republic CSV exports**: realized P&L per trade (FIFO), cumulative equity curve, daily gain/loss **heatmap**, per-symbol stats, open positions, full operations table.

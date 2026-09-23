@@ -214,3 +214,23 @@ code{background:#0d1322;border:1px solid var(--line);border-radius:6px;padding:1
 .tag.cash{color:#c4b5fd;border-color:#4c1d95}
 .method ul{margin:8px 0;color:var(--muted)} .method li{margin:5px 0}
 .foot{display:flex;justify-content:space-between;gap:10px;padding:18px;flex-wrap:wrap}
+/* mobile: let the topbar scroll away instead of eating ~30% of the viewport */
+@media(max-width:700px){
+  .topbar{position:static}
+  .topbar-inner{padding:10px 12px;gap:8px}
+  .brand-mark{font-size:24px}
+  .brand h1{font-size:16px}
+  .brand .sub{font-size:11px}
+  .topbar-controls{padding:8px 12px;gap:10px}
+  main{padding:12px 0 28px}
+  .wrap{padding:0 12px}
+  .card{padding:12px}
+  .card-head h2{font-size:15px}
+  .eq-net{font-size:19px}
+  /* P&L by instrument: scroll inside the card instead of overflowing the page */
+  #symbolBreakdown{overflow-x:auto;margin-left:-12px;margin-right:-12px;padding:0 12px;-webkit-overflow-scrolling:touch}
+  #symbolBreakdown .mini-tbl{min-width:560px}
+  /* safety: single-column bar rows stack instead of squeezing */
+  .bar-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .bar-row .bar-val{min-width:0}
+}
