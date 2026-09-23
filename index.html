@@ -18,17 +18,20 @@
         <p class="sub" data-i18n="brand_sub">Trade Republic CSV → P&amp;L dashboard &amp; daily heatmap · 100% local</p>
       </div>
     </div>
+    <button id="settingsToggle" class="btn ghost sm settings-toggle" type="button" aria-expanded="false" aria-controls="settingsGroup" aria-label="Settings · Impostazioni">⚙</button>
     <nav class="top-actions">
-      <div class="presets" id="langToggle" role="group" aria-label="Language / Lingua">
-        <button type="button" data-l="en" class="active">EN</button>
-        <button type="button" data-l="it">IT</button>
-      </div>
       <div class="tabs header-tabs" id="viewTabs" role="tablist" data-i18n-aria="views_label" aria-label="Views" hidden>
         <button id="tabDash" class="active" type="button" role="tab" aria-selected="true" data-i18n="tab_dash">Dashboard</button>
         <button id="tabStats" type="button" role="tab" aria-selected="false" data-i18n="tab_stats">Statistics</button>
       </div>
-      <button id="btnReset" class="btn ghost" type="button" disabled>Reset</button>
-      <a id="githubLink" class="btn primary" href="#" target="_blank" rel="noopener" hidden>GitHub ↗</a>
+      <div class="settings-group" id="settingsGroup">
+      <div class="presets" id="langToggle" role="group" aria-label="Language / Lingua">
+        <button type="button" data-l="en" class="active">EN</button>
+        <button type="button" data-l="it">IT</button>
+      </div>
+      <button id="btnReset" class="btn ghost sm" type="button" disabled>Reset</button>
+      <a id="githubLink" class="btn primary sm" href="#" target="_blank" rel="noopener" hidden>GitHub ↗</a>
+      </div>
     </nav>
   </div>
   <div class="wrap topbar-controls" id="topControls" hidden>
@@ -48,7 +51,6 @@
       <input type="date" id="dateTo" class="date-input" />
       <button id="dateClear" class="btn ghost sm" type="button" data-i18n-title="clear_range" title="Clear custom range">✕</button>
     </div>
-    <span class="muted sm" id="accountStats"></span>
   </div>
 </header>
 
@@ -194,6 +196,7 @@
           <button type="button" data-m="trades" data-i18n="mx_trades">Trades</button>
         </div>
         <div class="matrix-wrap"><div id="matrix" class="matrix" role="img" data-i18n-aria="matrix_role" aria-label="Weekday by hour distribution matrix"></div></div>
+        <div id="matrixTip" class="tip" hidden></div>
         <p class="muted sm" id="matrixCaption">Rows = weekday, columns = hour (local time) of execution. Win % counts winning sells; trades count buys + sells. Hover any cell for the full breakdown.</p>
       </section>
       <section class="card">

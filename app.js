@@ -5,7 +5,7 @@ const $ = (s) => document.querySelector(s);
 const els = {
   upload: $('#uploadCard'), drop: $('#dropZone'), file: $('#fileInput'), errors: $('#uploadErrors'),
   empty: $('#emptyState'), dash: $('#dashboard'),
-  topControls: $('#topControls'), accountStats: $('#accountStats'),
+  topControls: $('#topControls'),
   equity: $('#equityChart'), equitySub: $('#equitySub'), equityNet: $('#equityNet'),
   symbolBreakdown: $('#symbolBreakdown'), symbolHeadMeta: $('#symbolHeadMeta'),
   heatmap: $('#heatmap'), tip: $('#heatmapTip'), heatWindow: $('#heatWindow'),
@@ -21,7 +21,7 @@ const els = {
   dashView: $('#dashView'), statsView: $('#statsView'), tabDash: $('#tabDash'), tabStats: $('#tabStats'),
   viewTabs: $('#viewTabs'), langToggle: $('#langToggle'),
   statsRange: $('#statsRange'), statsHeadlines: $('#statsHeadlines'), tradeSummary: $('#tradeSummary'),
-  mxToggle: $('#mxToggle'), matrix: $('#matrix'), matrixCaption: $('#matrixCaption'),
+  mxToggle: $('#mxToggle'), matrix: $('#matrix'), matrixCaption: $('#matrixCaption'), matrixTip: $('#matrixTip'),
   openWd: $('#openWd'), closeWd: $('#closeWd'), openHr: $('#openHr'), closeHr: $('#closeHr'),
   winLossWd: $('#winLossWd'), winLossHr: $('#winLossHr'),
   activityMeta: $('#activityMeta'), outcomeMeta: $('#outcomeMeta'),
@@ -594,13 +594,15 @@ function renderHeatmap(closed) {
     if ((cur.getDay() + 6) % 7 === 0 && cur > d1) break;
   }
   els.heatmap.innerHTML = html;
-  // tooltip
+  // tooltip (hover on desktop, tap on mobile)
   els.heatmap.querySelectorAll('.day[data-date]').forEach((el) => {
-    el.addEventListener('mouseenter', () => {
+    const showTip = () => {
       els.tip.hidden = false;
       const v = Number(el.dataset.net);
       els.tip.innerHTML = `<strong>${esc(el.dataset.date)}</strong> · <span class="${v >= 0 ? 'pos' : 'neg'}">${fmtEUR(v)}</span> · ${sellW(Number(el.dataset.trades))}`;
-    });
+    };
+    el.addEventListener('mouseenter', showTip);
+    el.addEventListener('click', showTip);
   });
   // compact foot stats refer to the whole selected range (top bar), not the 4-month window
   const traded = [...perDay.values()].filter((d) => d.trades > 0);
@@ -894,6 +896,16 @@ function renderStats(closed) {
     });
   });
   els.matrix.innerHTML = mx;
+  // matrix tooltip: native hover on desktop, tap-to-show on mobile
+  if (els.matrixTip) {
+    els.matrixTip.hidden = true;
+    els.matrix.querySelectorAll('.mx-c').forEach((el) => {
+      el.addEventListener('click', () => {
+        els.matrixTip.textContent = el.getAttribute('title') || '';
+        els.matrixTip.hidden = false;
+      });
+    });
+  }
   if (els.matrixCaption) els.matrixCaption.textContent =
     t('mx_cap_a') +
     (nightTrades ? ' ' + (nightTrades === 1 ? t('mx_night_one') : t('mx_night_many', { n: nightTrades })) : '') +
@@ -1148,8 +1160,6 @@ function setData(text, name) {
     if (els.viewTabs) els.viewTabs.hidden = false;
     $('#btnReset').disabled = false;
     els.rowCount.textContent = t('rowcount', { f: STATE.fileName, r: raw.length, t: STATE.trading.length, c: STATE.closed.length });
-    const openCost = STATE.open.reduce((s, o) => s + o.cost, 0);
-    els.accountStats.textContent = t('account', { d: fmtEUR(STATE.deposits), c: fmtEUR(STATE.cashNet), o: fmtEUR(openCost) });
     // full-range default
     const dates = STATE.closed.map((c) => c.sellDate).sort();
     if (dates.length) { rangeFrom = dates[0]; rangeTo = dates[dates.length - 1]; }
@@ -1198,6 +1208,31 @@ function bind() {
   els.tabStats.addEventListener('click', () => showTab('stats'));
   els.langToggle.querySelectorAll('button').forEach((b) =>
     b.addEventListener('click', () => setLang(b.dataset.l)));
+  // mobile settings menu (gear button): toggle panel, close on outside click / Escape / selection
+  const settingsToggle = $('#settingsToggle'), settingsGroup = $('#settingsGroup');
+  if (settingsToggle && settingsGroup) {
+    const closeSettings = () => {
+      settingsGroup.classList.remove('open');
+      settingsToggle.setAttribute('aria-expanded', 'false');
+    };
+    settingsToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = settingsGroup.classList.toggle('open');
+      settingsToggle.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (e) => {
+      if (settingsGroup.classList.contains('open') && !settingsGroup.contains(e.target)) closeSettings();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && settingsGroup.classList.contains('open')) {
+        closeSettings();
+        settingsToggle.focus();
+      }
+    });
+    settingsGroup.addEventListener('click', (e) => {
+      if (e.target.closest('button,a')) closeSettings();
+    });
+  }
   els.mxToggle.querySelectorAll('button').forEach((b) =>
     b.addEventListener('click', () => { mxMode = b.dataset.m; renderAll(); }));
   els.heatPrev.addEventListener('click', () => { heatEndIdx -= 1; renderAll(); });
