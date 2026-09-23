@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TR Portfolio Visualizer (Unofficial) — P&amp;L Dashboard &amp; Heatmap</title>
+<meta name="description" content="Unofficial, privacy-friendly dashboard for Trade Republic CSV exports: realized P&L per trade, daily heatmap, equity curve. 100% local HTML/CSS/JS. Not affiliated with Trade Republic." />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">📈</span>
+      <div>
+        <h1>TR Portfolio Visualizer</h1>
+        <p class="sub" data-i18n="brand_sub">Trade Republic CSV → P&amp;L dashboard &amp; daily heatmap · 100% local</p>
+      </div>
+    </div>
+    <nav class="top-actions">
+      <div class="presets" id="langToggle" role="group" aria-label="Language / Lingua">
+        <button type="button" data-l="en" class="active">EN</button>
+        <button type="button" data-l="it">IT</button>
+      </div>
+      <div class="tabs header-tabs" id="viewTabs" role="tablist" data-i18n-aria="views_label" aria-label="Views" hidden>
+        <button id="tabDash" class="active" type="button" role="tab" aria-selected="true" data-i18n="tab_dash">Dashboard</button>
+        <button id="tabStats" type="button" role="tab" aria-selected="false" data-i18n="tab_stats">Statistics</button>
+      </div>
+      <button id="btnReset" class="btn ghost" type="button" disabled>Reset</button>
+      <a id="githubLink" class="btn primary" href="#" target="_blank" rel="noopener" hidden>GitHub ↗</a>
+    </nav>
+  </div>
+  <div class="wrap topbar-controls" id="topControls" hidden>
+    <div class="presets" id="presets" role="group" data-i18n-aria="presets_label" aria-label="Date range presets">
+      <button type="button" data-p="1D" data-i18n-title="p_1d" title="Last trading day">1D</button>
+      <button type="button" data-p="1W" data-i18n-title="p_1w" title="Last 7 days">1W</button>
+      <button type="button" data-p="1M" data-i18n-title="p_1m" title="Last 30 days">1M</button>
+      <button type="button" data-p="1Y" data-i18n-title="p_1y" title="Last 365 days">1Y</button>
+      <button type="button" data-p="YTD" data-i18n-title="p_ytd" title="Year to date">YTD</button>
+      <button type="button" data-p="ALL" data-i18n-title="p_all" title="Full range" data-i18n="p_all_btn">All</button>
+    </div>
+    <div class="date-range">
+      <label class="muted sm" for="dateFrom" data-i18n="from">From</label>
+      <input type="date" id="dateFrom" class="date-input" />
+      <span class="muted sm">–</span>
+      <label class="muted sm" for="dateTo" data-i18n="to">To</label>
+      <input type="date" id="dateTo" class="date-input" />
+      <button id="dateClear" class="btn ghost sm" type="button" data-i18n-title="clear_range" title="Clear custom range">✕</button>
+    </div>
+    <span class="muted sm" id="accountStats"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- Upload -->
+  <section class="card upload" id="uploadCard">
+    <div class="upload-drop" id="dropZone" tabindex="0" role="button" data-i18n-aria="drop_label" aria-label="Upload CSV file">
+      <div class="upload-icon" aria-hidden="true">📤</div>
+      <div>
+        <h2 data-i18n="up_title">Drop your Trade Republic CSV here</h2>
+        <p class="muted"><span data-i18n="up_or">or</span> <label class="linklike" for="fileInput" data-i18n="up_browse">browse files</label> <span data-i18n="up_rest">· parsed locally, never uploaded or stored</span></p>
+        <input type="file" id="fileInput" accept=".csv,text/csv" hidden />
+      </div>
+      <div class="upload-meta">
+        <span class="pill" data-i18n="pill_private">✓ private</span>
+        <span class="pill" data-i18n="pill_static">✓ static</span>
+        <span class="pill">✓ FIFO P&amp;L</span>
+      </div>
+    </div>
+    <div class="upload-foot">
+      <div class="format-hint">
+        <strong data-i18n="exp_a">Expected file:</strong> <code>Esportazione operazioni.csv</code> <span data-i18n="exp_b">/ Trade Republic export with columns</span>
+        <code>datetime,date,category,type,symbol,shares,price,amount,fee,tax…</code>
+      </div>
+      <div class="upload-errors" id="uploadErrors" hidden></div>
+    </div>
+  </section>
+
+  <!-- Empty state -->
+  <section class="card empty" id="emptyState">
+    <h2 data-i18n="empty_title">No data yet</h2>
+    <p class="muted"><span data-i18n="empty_a">Upload a CSV</span> <span data-i18n="empty_b">to see the dashboard.</span></p>
+    <ol class="steps">
+      <li data-i18n="step1"><strong>1.</strong> Trade Republic app → Profile → Settings → Export operations (CSV)</li>
+      <li data-i18n="step2"><strong>2.</strong> Drop the file above — PII columns are stripped on load, everything stays in memory, refresh wipes all.</li>
+      <li data-i18n="step3"><strong>3.</strong> Publish this folder to GitHub Pages — no server, no build.</li>
+    </ol>
+  </section>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div id="dashView">
+    <section class="grid-main">
+      <div class="card">
+        <div class="card-head">
+          <h2 data-i18n="eq_title">Cumulative realized P&amp;L</h2>
+          <div class="eq-head-right"><span class="eq-net" id="equityNet"></span><span class="muted sm" id="equitySub"></span></div>
+        </div>
+        <div id="equityChart" class="chart"></div>
+        <p class="muted sm" data-i18n="eq_note">Net of fees &amp; taxes, ordered by sell date (FIFO). Open positions are <em>not</em> revalued — no market prices in the export.</p>
+      </div>
+      <div class="card heat-side">
+        <div class="card-head">
+          <h2 data-i18n="heat_title">Heatmap</h2>
+          <span class="muted sm" id="heatWindow"></span>
+        </div>
+        <div class="heatmap-nav">
+          <button id="heatPrev" class="btn ghost sm" type="button" data-i18n-aria="heat_prev" aria-label="Previous months">◀</button>
+          <div class="heatmap-wrap">
+            <div class="dow" id="dowLabels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+            <div id="heatmap" class="heatmap"></div>
+          </div>
+          <button id="heatNext" class="btn ghost sm" type="button" data-i18n-aria="heat_next" aria-label="Next months">▶</button>
+        </div>
+        <div id="heatmapTip" class="tip" hidden></div>
+        <div id="heatStats" class="day-extremes"></div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card">
+        <div class="card-head">
+          <h2 data-i18n="inst_title">P&amp;L by instrument</h2>
+          <span class="muted sm" id="symbolHeadMeta"></span>
+        </div>
+        <div id="symbolBreakdown"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2 data-i18n="asset_title">By asset class</h2>
+          <span class="muted sm" id="assetHeadMeta">realized · win rate</span>
+        </div>
+        <div id="assetGrid" class="asset-grid"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="month_title">P&amp;L by month</h2>
+        <span class="muted sm" id="monthMeta"></span>
+      </div>
+      <div id="monthChart" class="chart"></div>
+      <p class="muted sm" data-i18n="month_note">Realized net per calendar month (sell date, FIFO). Green = profitable month, red = losing month.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2><span data-i18n="closed_title">Closed trades</span> <span class="count" id="closedCount"></span></h2>
+        <span class="muted sm" id="closedHeadMeta"></span>
+      </div>
+      <div class="table-wrap"><table id="closedTable" class="tbl"></table></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2><span data-i18n="open_title">Open positions</span> <span class="count" id="openCount"></span></h2></div>
+      <div class="table-wrap"><table id="openTable" class="tbl"></table></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2><span data-i18n="ops_title">All operations</span> <span class="count" id="opsCount"></span></h2>
+      <span class="muted sm" data-i18n="ops_sub">raw CSV rows, newest first</span>
+      </div>
+      <div class="table-wrap"><table id="opsTable" class="tbl"></table></div>
+    </section>
+
+    <section class="card method">
+      <h2 data-i18n="method_title">How P&amp;L is computed</h2>
+      <ul>
+        <li data-i18n="m1"><strong>FIFO matching</strong> per <code>symbol</code> (ISIN). Each SELL consumes the oldest open BUY lots.</li>
+        <li data-i18n="m2"><strong>Gross</strong> = qty × (sell price − buy price). <strong>Net</strong> = gross − allocated buy fees − sell fees − sell taxes.</li>
+        <li data-i18n="m3">Fees/taxes of a BUY lot are split pro-rata when a SELL only closes part of it.</li>
+        <li data-i18n="m4"><strong>Daily heatmap</strong> groups net P&amp;L by sell <code>date</code>. Deposits, withdrawals and interest are excluded from trading P&amp;L but counted in cash stats.</li>
+        <li data-i18n="m5">All parsing happens in <code>app.js</code> — inspect it, no trackers, no network calls. PII columns (<code>description</code>, <code>transaction_id</code>, counterparty data, IBANs, payment references, MCC) are dropped on load, cash-movement names are masked as <code>***</code>, <code>CARD</code> payment rows are discarded entirely, and nothing is ever written to browser storage.</li>
+      </ul>
+    </section>
+    </div>
+    <div id="statsView" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2 data-i18n="sum_title">Summary</h2>
+          <span class="muted sm" data-i18n="sum_sub">best &amp; worst moments to act · hours 06–23 local · in range</span>
+        </div>
+        <div id="tradeSummary" class="insight-grid"></div>
+      </section>
+      <section class="card">
+        <div class="card-head">
+          <h2 data-i18n="act_title">Activity &amp; profitability</h2>
+          <span class="muted sm" id="statsRange"></span>
+        </div>
+        <div id="statsHeadlines" class="day-extremes"></div>
+        <div class="presets matrix-toggle" id="mxToggle" role="group" data-i18n-aria="mx_label" aria-label="Matrix view">
+          <button type="button" data-m="win" class="active" data-i18n="mx_win">Win %</button>
+          <button type="button" data-m="trades" data-i18n="mx_trades">Trades</button>
+        </div>
+        <div class="matrix-wrap"><div id="matrix" class="matrix" role="img" data-i18n-aria="matrix_role" aria-label="Weekday by hour distribution matrix"></div></div>
+        <p class="muted sm" id="matrixCaption">Rows = weekday, columns = hour (local time) of execution. Win % counts winning sells; trades count buys + sells. Hover any cell for the full breakdown.</p>
+      </section>
+      <section class="card">
+        <div class="card-head">
+          <h2 data-i18n="oc_title">Open vs close activity</h2>
+          <span class="muted sm" id="activityMeta">separate scales per side · hours 06–23 local</span>
+        </div>
+        <div class="bench-legend"><span><i style="background:#5b8cff"></i><span data-i18n="opened_buys">Opened (buys)</span></span><span><i style="background:#f59e0b"></i><span data-i18n="closed_sells">Closed (sells)</span></span></div>
+        <div class="grid2 stats-cols">
+          <div>
+            <h3 data-i18n="opened_wd">Opened · by weekday</h3>
+            <div id="openWd"></div>
+          </div>
+          <div>
+            <h3 data-i18n="closed_wd">Closed · by weekday</h3>
+            <div id="closeWd"></div>
+          </div>
+        </div>
+        <div class="grid2 stats-cols">
+          <div>
+            <h3 data-i18n="opened_hr">Opened · by hour (local, 06–23)</h3>
+            <div id="openHr"></div>
+          </div>
+          <div>
+            <h3 data-i18n="closed_hr">Closed · by hour (local, 06–23)</h3>
+            <div id="closeHr"></div>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head">
+          <h2 data-i18n="wl_title">Wins vs losses</h2>
+          <span class="muted sm" id="outcomeMeta">closed sells only · green = win, red = loss</span>
+        </div>
+        <div class="bench-legend"><span><i style="background:#22c55e"></i><span data-i18n="wins">Wins</span></span><span><i style="background:#ef4444"></i><span data-i18n="losses">Losses</span></span></div>
+        <div class="grid2 stats-cols">
+          <div>
+            <h3 data-i18n="by_wd">By weekday</h3>
+            <div id="winLossWd"></div>
+          </div>
+          <div>
+            <h3 data-i18n="by_hr">By hour (local, 06–23)</h3>
+            <div id="winLossHr"></div>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head">
+          <h2 data-i18n="dur_title">Position duration</h2>
+          <span class="muted sm" id="durationMeta"></span>
+        </div>
+        <div id="durationBuckets"></div>
+        <p class="muted sm" data-i18n="hold_note">Holding period per closed SELL: sell date minus earliest matched BUY date (FIFO).</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer class="wrap foot muted sm">
+  <span data-i18n="foot_text">TR Portfolio Visualizer · static HTML/CSS/JS · your CSV never leaves this browser.</span>
+  <span id="rowCount"></span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
