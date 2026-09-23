@@ -1,2 +1,9 @@
 .DS_Store
 Thumbs.db
+# Prevent accidental leaks of personal financial exports / secrets
+*.csv
+*.CSV
+*.env
+.env.*
+*.key
+*.pem
