@@ -13,6 +13,7 @@ const els = {
   dowLabels: $('#dowLabels'),
   closedTable: $('#closedTable'), closedCount: $('#closedCount'), closedHeadMeta: $('#closedHeadMeta'),
   monthChart: $('#monthChart'), monthMeta: $('#monthMeta'),
+  compChart: $('#compChart'), compMeta: $('#compMeta'), compTip: $('#compTip'), compLists: $('#compLists'),
   openTable: $('#openTable'), openCount: $('#openCount'),
   assetGrid: $('#assetGrid'), assetHeadMeta: $('#assetHeadMeta'),
   opsTable: $('#opsTable'), opsCount: $('#opsCount'),
@@ -53,11 +54,10 @@ const normAsset = (ac) => {
 let lang = (navigator.language || 'en').toLowerCase().startsWith('it') ? 'it' : 'en';
 const I18N = {
 en: {
-  brand_sub: 'Trade Republic CSV → P&L dashboard & daily heatmap · 100% local',
-  tab_dash: 'Dashboard', tab_stats: 'Statistics', views_label: 'Views',
-  p_1d: 'Last trading day', p_1w: 'Last 7 days', p_1m: 'Last 30 days', p_1y: 'Last 365 days',
+  tab_dash: 'Dashboard', tab_stats: 'Statistics', views_label: 'Views', settings_label: 'Settings',
+  p_1d: 'Last trading day', p_1w: 'Last 7 days', p_1m: 'Last 30 days',
   p_ytd: 'Year to date', p_all: 'Full range', p_all_btn: 'All', presets_label: 'Date range presets',
-  from: 'From', to: 'To', clear_range: 'Clear custom range',
+  from: 'From', to: 'To', clear_range: 'Clear custom range', custom_range: 'Custom range',
   up_title: 'Drop your Trade Republic CSV here', up_or: 'or', up_browse: 'browse files',
   up_rest: '· parsed locally, never uploaded or stored',
   pill_private: '✓ private', pill_static: '✓ static',
@@ -81,6 +81,11 @@ en: {
   trade_one: 'trade', trade_many: 'trades',
   month_title: 'P&L by month',
   month_note: 'Realized net per calendar month (sell date, FIFO). Green = profitable month, red = losing month.',
+  comp_title: 'Win / loss composition',
+  comp_legend: 'zero in the middle · biggest trade next to zero',
+  comp_meta: 'Net {n} · {w} wins {wt} · {l} losses {lt}',
+  comp_top_wins: 'Top wins',
+  comp_top_losses: 'Top losses',
   closed_title: 'Closed trades', open_title: 'Open positions', ops_title: 'All operations',
   ops_sub: 'raw CSV rows, newest first',
   method_title: 'How P&L is computed',
@@ -139,11 +144,10 @@ en: {
   wd_short: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
 },
 it: {
-  brand_sub: 'CSV Trade Republic → dashboard P&L e heatmap giornaliera · 100% locale',
-  tab_dash: 'Dashboard', tab_stats: 'Statistiche', views_label: 'Viste',
-  p_1d: 'Ultimo giorno di trading', p_1w: 'Ultimi 7 giorni', p_1m: 'Ultimi 30 giorni', p_1y: 'Ultimi 365 giorni',
+  tab_dash: 'Dashboard', tab_stats: 'Statistiche', views_label: 'Viste', settings_label: 'Impostazioni',
+  p_1d: 'Ultimo giorno di trading', p_1w: 'Ultimi 7 giorni', p_1m: 'Ultimi 30 giorni',
   p_ytd: 'Da inizio anno', p_all: 'Intero intervallo', p_all_btn: 'Tutto', presets_label: 'Preset intervallo date',
-  from: 'Da', to: 'A', clear_range: 'Cancella intervallo personalizzato',
+  from: 'Da', to: 'A', clear_range: 'Cancella intervallo personalizzato', custom_range: 'Intervallo personalizzato',
   up_title: 'Trascina qui il tuo CSV Trade Republic', up_or: 'oppure', up_browse: 'sfoglia i file',
   up_rest: '· analizzato in locale, mai caricato né salvato',
   pill_private: '✓ privato', pill_static: '✓ statico',
@@ -167,6 +171,11 @@ it: {
   trade_one: 'trade', trade_many: 'trade',
   month_title: 'P&L per mese',
   month_note: 'Netto realizzato per mese di calendario (data vendita, FIFO). Verde = mese profittevole, rosso = mese in perdita.',
+  comp_title: 'Composizione vincite / perdite',
+  comp_legend: 'zero al centro · trade più grande vicino allo zero',
+  comp_meta: 'Netto {n} · {w} vincite {wt} · {l} perdite {lt}',
+  comp_top_wins: 'Vincite top',
+  comp_top_losses: 'Perdite top',
   closed_title: 'Trade chiusi', open_title: 'Posizioni aperte', ops_title: 'Tutte le operazioni',
   ops_sub: 'righe CSV grezze, dalle più recenti',
   method_title: 'Come è calcolato il P&L',
@@ -425,6 +434,7 @@ function renderAll() {
   renderStats(closed);
   paintRanges();
   renderMonthly(closed);
+  renderComp(closed);
 }
 
 function renderEquity(closed) {
@@ -979,6 +989,7 @@ function renderAsset(closed) {
 let activePreset = 'ALL';
 let mxMode = 'win'; // stats matrix view: 'win' | 'trades'
 let symbolExpanded = false; // P&L by instrument: collapsed shows first 4 + last 4
+let compExpanded = false; // Win/loss composition lists: collapsed shows top 5 per side
 
 function isoAdd(iso, days) {
   const d = new Date(iso + 'T12:00:00');
@@ -998,7 +1009,6 @@ function applyPreset(p) {
   if (p === '1D') { rangeFrom = anchor; rangeTo = anchor; }
   else if (p === '1W') { rangeFrom = isoAdd(anchor, -6); rangeTo = anchor; }
   else if (p === '1M') { rangeFrom = isoAdd(anchor, -29); rangeTo = anchor; }
-  else if (p === '1Y') { rangeFrom = isoAdd(anchor, -364); rangeTo = anchor; }
   else if (p === 'YTD') { rangeFrom = anchor.slice(0, 4) + '-01-01'; rangeTo = anchor; }
   else if (p === 'ALL') {
     const ds = STATE.closed.map((c) => c.sellDate).sort();
@@ -1006,6 +1016,8 @@ function applyPreset(p) {
   }
   activePreset = p;
   syncDateInputs();
+  $('#customRange')?.classList.remove('open');
+  $('#dateToggle')?.setAttribute('aria-expanded', 'false');
   renderAll();
 }
 function applyCustomRange() {
@@ -1031,7 +1043,7 @@ function syncDateInputs() {
     els.dateFrom.value = '';
     els.dateTo.value = '';
   }
-  document.querySelector('.date-range')?.classList.toggle('active', activePreset === 'CUSTOM');
+  document.querySelector('.date-wrap')?.classList.toggle('active', activePreset === 'CUSTOM');
 }
 function prettyMonth(ym) {
   const [y, m] = ym.split('-').map(Number);
@@ -1086,6 +1098,131 @@ function renderMonthly(closed) {
     if (i % step === 0 || i === n - 1) s += `<text x="${cx.toFixed(1)}" y="${H - 8}" font-size="10" fill="#9aa4bd" text-anchor="middle">${esc(shortMonth(x.ym))}</text>`;
   });
   els.monthChart.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('month_title')}">${s}</svg>`;
+}
+
+/* ---------- win/loss composition: one diverging stacked bar, zero in the middle ---------- */
+function renderComp(closed) {
+  if (!els.compChart) return;
+  const wins = closed.filter((c) => c.net > 0).sort((a, b) => b.net - a.net);
+  const losses = closed.filter((c) => c.net < 0).sort((a, b) => a.net - b.net);
+  const winTot = wins.reduce((s, c) => s + c.net, 0);
+  const lossTot = losses.reduce((s, c) => s + -c.net, 0);
+  const net = winTot - lossTot;
+  if (els.compMeta) {
+    els.compMeta.textContent = (wins.length || losses.length)
+      ? t('comp_meta', { n: fmtEUR(net), w: wins.length, wt: fmtEUR(winTot), l: losses.length, lt: fmtEUR(-lossTot) })
+      : '';
+  }
+  if (!wins.length && !losses.length) {
+    els.compChart.innerHTML = `<p class="muted">${t('no_data_filters')}</p>`;
+    if (els.compLists) els.compLists.innerHTML = '';
+    if (els.compTip) els.compTip.hidden = true;
+    return;
+  }
+  const maxSide = Math.max(winTot, lossTot, 1e-9);
+  const pctWin = (c) => Math.max(0.15, (c.net / maxSide) * 100);
+  const pctLoss = (c) => Math.max(0.15, (-c.net / maxSide) * 100);
+  // cumulative share from zero outward (biggest first) — answers "how much do the big ones drive the total?"
+  let run = 0;
+  const winsCum = wins.map((c) => {
+    run += c.net;
+    return { c, share: (c.net / winTot) * 100, cum: (run / winTot) * 100 };
+  });
+  run = 0;
+  const lossesBySize = [...losses]; // already biggest-abs first
+  const lossesCum = new Map();
+  lossesBySize.forEach((c) => {
+    run += -c.net;
+    lossesCum.set(c, { share: ((-c.net) / lossTot) * 100, cum: (run / lossTot) * 100 });
+  });
+  const lossesDom = [...lossesBySize].reverse(); // smallest outward, biggest next to zero
+  const segTitle = (c, share, cum, isWin) => {
+    const side = isWin ? winTot : lossTot;
+    void side;
+    return `${c.sellDate} · ${c.symbol} ${c.name ? '· ' + c.name : ''}\n${fmtEUR(c.net)} · ${share.toFixed(1)}% of ${isWin ? t('wins').toLowerCase() : t('losses').toLowerCase()} · cum ${cum.toFixed(1)}%`;
+  };
+  const winHtml = winsCum.map(({ c, share, cum }, i) => {
+    const w = pctWin(c).toFixed(3);
+    const shade = i % 2 ? '#16a34a' : '#22c55e';
+    const label = c.net / maxSide > 0.12 ? fmtShort(c.net) : '';
+    return `<div class="dv-seg win" style="width:${w}%;background:${shade}" tabindex="0" role="img"` +
+      ` data-tip="${esc(segTitle(c, share, cum, true))}" data-full="${esc(c.sellDate + ' · ' + c.symbol + ' · ' + fmtEUR(c.net))}"><span>${esc(label)}</span></div>`;
+  }).join('');
+  const lossHtml = lossesDom.map((c) => {
+    const { share, cum } = lossesCum.get(c);
+    const w = pctLoss(c).toFixed(3);
+    // rank by size for shading: biggest = index 0 in lossesBySize
+    const rank = lossesBySize.indexOf(c);
+    const shade = rank % 2 ? '#dc2626' : '#ef4444';
+    const label = -c.net / maxSide > 0.12 ? fmtShort(c.net) : '';
+    return `<div class="dv-seg loss" style="width:${w}%;background:${shade}" tabindex="0" role="img"` +
+      ` data-tip="${esc(segTitle(c, share, cum, false))}" data-full="${esc(c.sellDate + ' · ' + c.symbol + ' · ' + fmtEUR(c.net))}"><span>${esc(label)}</span></div>`;
+  }).join('');
+  els.compChart.innerHTML =
+    `<div class="diverge-scale"><span class="neg"><strong>${fmtEUR(-lossTot)}</strong></span>` +
+    `<span class="diverge-net ${net >= 0 ? 'pos' : 'neg'}">Σ <strong>${fmtEUR(net)}</strong></span>` +
+    `<span class="pos"><strong>${fmtEUR(winTot)}</strong></span></div>` +
+    `<div class="diverge-track" role="img" aria-label="${esc(t('comp_title'))}">` +
+    `<div class="diverge-half left">${lossHtml || '<span class="muted sm diverge-empty">—</span>'}</div>` +
+    `<div class="diverge-zero"></div>` +
+    `<div class="diverge-half right">${winHtml || '<span class="muted sm diverge-empty">—</span>'}</div></div>` +
+    `<div class="diverge-axis"><span>${esc(fmtShort(-maxSide))}</span><span>0</span><span>${esc(fmtShort(maxSide))}</span></div>`;
+  // hover / focus readout: one shared tip line so tiny 1px blocks stay readable + touch friendly
+  const tip = els.compTip;
+  if (tip) {
+    tip.hidden = true;
+    els.compChart.querySelectorAll('.dv-seg').forEach((el) => {
+      const show = () => {
+        tip.hidden = false;
+        tip.innerHTML = `<strong>${esc(el.dataset.full)}</strong><br><span class="muted">${esc(el.dataset.tip).replace(/\n/g, ' · ')}</span>`;
+      };
+      el.addEventListener('mouseenter', show);
+      el.addEventListener('focus', show);
+      el.addEventListener('click', show);
+    });
+  }
+  // decomposition summary: top contributors per side + concentration, expandable to all
+  if (els.compLists) {
+    const rowHtml = (arr, isWin) => {
+      const sideTot = isWin ? winTot : lossTot;
+      return arr.map((c, i) => {
+        const v = isWin ? c.net : -c.net;
+        const share = sideTot ? (v / sideTot) * 100 : 0;
+        return `<div class="comp-row"><span class="comp-rank">${i + 1}.</span>` +
+          `<span class="comp-sym mono">${esc(c.symbol)} <span class="muted">${esc((c.name || '').slice(0, 18))}</span></span>` +
+          `<span class="muted comp-date">${esc(c.sellDate)}</span>` +
+          `<span class="comp-val ${isWin ? 'pos' : 'neg'}"><strong>${esc(fmtEUR(c.net))}</strong></span>` +
+          `<span class="muted comp-share">${share.toFixed(1)}%</span></div>`;
+      }).join('');
+    };
+    const conc = (arr, sideTot, k) => {
+      if (!arr.length || !sideTot) return '—';
+      const top = arr.slice(0, k).reduce((s, c) => s + Math.abs(c.net), 0);
+      return (top / sideTot * 100).toFixed(0) + '%';
+    };
+    const LIMIT = 5;
+    const showLosses = compExpanded ? lossesBySize : lossesBySize.slice(0, LIMIT);
+    const showWins = compExpanded ? wins : wins.slice(0, LIMIT);
+    const hidden = compExpanded ? 0 : Math.max(0, lossesBySize.length - LIMIT) + Math.max(0, wins.length - LIMIT);
+    const total = lossesBySize.length + wins.length;
+    const moreTxt = hidden === 1 ? t('more_one') : t('more_many', { n: hidden });
+    els.compLists.innerHTML =
+      `<div class="comp-col"><h3>${esc(t('comp_top_losses'))} <span class="muted">· top 3 = ${conc(lossesBySize, lossTot, 3)}</span></h3>` +
+      `<div class="comp-rows${compExpanded ? ' scroll' : ''}">${rowHtml(showLosses, false) || `<p class="muted sm">${t('no_data')}</p>`}</div></div>` +
+      `<div class="comp-col"><h3>${esc(t('comp_top_wins'))} <span class="muted">· top 3 = ${conc(wins, winTot, 3)}</span></h3>` +
+      `<div class="comp-rows${compExpanded ? ' scroll' : ''}">${rowHtml(showWins, true) || `<p class="muted sm">${t('no_data')}</p>`}</div></div>` +
+      (hidden > 0 || compExpanded
+        ? `<div class="comp-toggle">${compExpanded
+          ? `<button type="button" class="expand-btn" id="compToggle" aria-expanded="true">▲ ${esc(t('show_less', { a: LIMIT, b: LIMIT }))}</button>`
+          : `<button type="button" class="expand-btn" id="compToggle" aria-expanded="false">··· ${esc(moreTxt)} ··· &nbsp; ▼ ${esc(t('show_all', { n: total }))}</button>`}</div>`
+        : '');
+    const cgl = $('#compToggle');
+    if (cgl) cgl.addEventListener('click', () => {
+      compExpanded = !compExpanded;
+      const f = getFilters();
+      renderComp(STATE.closed.filter((c) => passClosed(c, f)));
+    });
+  }
 }
 
 /* ---------- tables ---------- */
@@ -1165,6 +1302,7 @@ function setData(text, name) {
     if (dates.length) { rangeFrom = dates[0]; rangeTo = dates[dates.length - 1]; }
     activePreset = 'ALL';
     symbolExpanded = false;
+    compExpanded = false;
     syncDateInputs();
     renderAll();
     els.errors.hidden = true;
@@ -1208,7 +1346,7 @@ function bind() {
   els.tabStats.addEventListener('click', () => showTab('stats'));
   els.langToggle.querySelectorAll('button').forEach((b) =>
     b.addEventListener('click', () => setLang(b.dataset.l)));
-  // mobile settings menu (gear button): toggle panel, close on outside click / Escape / selection
+  // settings menu (gear button): toggle panel, close on outside click / Escape / selection
   const settingsToggle = $('#settingsToggle'), settingsGroup = $('#settingsGroup');
   if (settingsToggle && settingsGroup) {
     const closeSettings = () => {
@@ -1231,6 +1369,28 @@ function bind() {
     });
     settingsGroup.addEventListener('click', (e) => {
       if (e.target.closest('button,a')) closeSettings();
+    });
+  }
+  // custom-range picker (calendar button): same dropdown pattern as the settings menu
+  const dateToggle = $('#dateToggle'), customRange = $('#customRange');
+  if (dateToggle && customRange) {
+    const closeRange = () => {
+      customRange.classList.remove('open');
+      dateToggle.setAttribute('aria-expanded', 'false');
+    };
+    dateToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = customRange.classList.toggle('open');
+      dateToggle.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (e) => {
+      if (customRange.classList.contains('open') && !customRange.contains(e.target)) closeRange();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && customRange.classList.contains('open')) {
+        closeRange();
+        dateToggle.focus();
+      }
     });
   }
   els.mxToggle.querySelectorAll('button').forEach((b) =>

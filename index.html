@@ -13,24 +13,23 @@
   <div class="wrap topbar-inner">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">📈</span>
-      <div>
-        <h1>TR Portfolio Visualizer</h1>
-        <p class="sub" data-i18n="brand_sub">Trade Republic CSV → P&amp;L dashboard &amp; daily heatmap · 100% local</p>
-      </div>
+      <h1>TR Portfolio Visualizer</h1>
     </div>
-    <button id="settingsToggle" class="btn ghost sm settings-toggle" type="button" aria-expanded="false" aria-controls="settingsGroup" aria-label="Settings · Impostazioni">⚙</button>
     <nav class="top-actions">
       <div class="tabs header-tabs" id="viewTabs" role="tablist" data-i18n-aria="views_label" aria-label="Views" hidden>
         <button id="tabDash" class="active" type="button" role="tab" aria-selected="true" data-i18n="tab_dash">Dashboard</button>
         <button id="tabStats" type="button" role="tab" aria-selected="false" data-i18n="tab_stats">Statistics</button>
       </div>
-      <div class="settings-group" id="settingsGroup">
-      <div class="presets" id="langToggle" role="group" aria-label="Language / Lingua">
-        <button type="button" data-l="en" class="active">EN</button>
-        <button type="button" data-l="it">IT</button>
-      </div>
-      <button id="btnReset" class="btn ghost sm" type="button" disabled>Reset</button>
       <a id="githubLink" class="btn primary sm" href="#" target="_blank" rel="noopener" hidden>GitHub ↗</a>
+      <div class="settings-wrap">
+        <button id="settingsToggle" class="btn ghost sm settings-toggle" type="button" aria-expanded="false" aria-controls="settingsGroup" aria-label="Settings · Impostazioni" data-i18n-aria="settings_label" data-i18n-title="settings_label" title="Settings">⚙</button>
+        <div class="settings-group" id="settingsGroup">
+          <div class="presets" id="langToggle" role="group" aria-label="Language / Lingua">
+            <button type="button" data-l="en" class="active">EN</button>
+            <button type="button" data-l="it">IT</button>
+          </div>
+          <button id="btnReset" class="btn ghost sm" type="button" disabled>Reset</button>
+        </div>
       </div>
     </nav>
   </div>
@@ -39,17 +38,19 @@
       <button type="button" data-p="1D" data-i18n-title="p_1d" title="Last trading day">1D</button>
       <button type="button" data-p="1W" data-i18n-title="p_1w" title="Last 7 days">1W</button>
       <button type="button" data-p="1M" data-i18n-title="p_1m" title="Last 30 days">1M</button>
-      <button type="button" data-p="1Y" data-i18n-title="p_1y" title="Last 365 days">1Y</button>
       <button type="button" data-p="YTD" data-i18n-title="p_ytd" title="Year to date">YTD</button>
       <button type="button" data-p="ALL" data-i18n-title="p_all" title="Full range" data-i18n="p_all_btn">All</button>
     </div>
-    <div class="date-range">
-      <label class="muted sm" for="dateFrom" data-i18n="from">From</label>
-      <input type="date" id="dateFrom" class="date-input" />
-      <span class="muted sm">–</span>
-      <label class="muted sm" for="dateTo" data-i18n="to">To</label>
-      <input type="date" id="dateTo" class="date-input" />
-      <button id="dateClear" class="btn ghost sm" type="button" data-i18n-title="clear_range" title="Clear custom range">✕</button>
+    <div class="date-wrap">
+      <button id="dateToggle" class="btn ghost sm" type="button" aria-expanded="false" aria-controls="customRange" data-i18n-aria="custom_range" data-i18n-title="custom_range" title="Custom range" aria-label="Custom range">📅</button>
+      <div class="date-range" id="customRange">
+        <label class="muted sm" for="dateFrom" data-i18n="from">From</label>
+        <input type="date" id="dateFrom" class="date-input" />
+        <span class="muted sm">–</span>
+        <label class="muted sm" for="dateTo" data-i18n="to">To</label>
+        <input type="date" id="dateTo" class="date-input" />
+        <button id="dateClear" class="btn ghost sm" type="button" data-i18n-title="clear_range" title="Clear custom range">✕</button>
+      </div>
     </div>
   </div>
 </header>
@@ -135,6 +136,17 @@
         </div>
         <div id="assetGrid" class="asset-grid"></div>
       </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="comp_title">Win / loss composition</h2>
+        <span class="muted sm" id="compMeta"></span>
+      </div>
+      <div class="bench-legend"><span><i style="background:#ef4444"></i><span data-i18n="losses">Losses</span></span><span><i style="background:#22c55e"></i><span data-i18n="wins">Wins</span></span><span class="muted sm" data-i18n="comp_legend">zero in the middle · biggest trade next to zero</span></div>
+      <div id="compChart"></div>
+      <div id="compTip" class="tip" hidden></div>
+      <div id="compLists" class="comp-lists"></div>
     </section>
 
     <section class="card">
